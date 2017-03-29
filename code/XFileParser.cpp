@@ -52,7 +52,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "ByteSwapper.h"
 #include "StringUtils.h"
 #include "../include/assimp/DefaultLogger.hpp"
-
+#include "StringUtils.h"
 
 using namespace Assimp;
 using namespace Assimp::XFile;
@@ -731,7 +731,7 @@ void XFileParser::ParseDataObjectMaterial( Material* pMaterial)
     std::string matName;
     readHeadOfDataObject( &matName);
     if( matName.empty())
-        matName = std::string( "material") + std::to_string( mLineNumber );
+        matName = std::string( "material") + to_string( mLineNumber );
     pMaterial->mName = matName;
     pMaterial->mIsReference = false;
 

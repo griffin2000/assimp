@@ -52,6 +52,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <sstream>
 #include <vector>
 #include <map>
+#include "StringUtils.h"
+
 
 struct aiScene;
 struct aiNode;
@@ -122,7 +124,7 @@ protected:
     void PopTag() { ai_assert( startstr.length() > 1); startstr.erase( startstr.length() - 2); }
 
     /// Creates a mesh ID for the given mesh
-    std::string GetMeshId( size_t pIndex) const { return std::string( "meshId" ) + std::to_string(pIndex); }
+    std::string GetMeshId( size_t pIndex) const { return std::string( "meshId" ) + to_string(pIndex); }
 
 public:
     /// Stringstream to write all output into

@@ -107,6 +107,15 @@ Property* ReadTypedProperty(const Element& element)
             ParseTokenAsFloat(*tok[6]))
         );
     }
+	else if (!strcmp(cs, "ColorAndAlpha"))
+	{
+		aiColor4D rgba;
+		rgba.r = ParseTokenAsFloat(*tok[4]);
+		rgba.g = ParseTokenAsFloat(*tok[5]);
+		rgba.b = ParseTokenAsFloat(*tok[6]);
+		rgba.a = ParseTokenAsFloat(*tok[7]);
+		return new TypedProperty<aiColor4D>(rgba);
+	}
     else if (!strcmp(cs,"double") || !strcmp(cs,"Number") || !strcmp(cs,"Float") || !strcmp(cs,"FieldOfView")) {
         return new TypedProperty<float>(ParseTokenAsFloat(*tok[4]));
     }

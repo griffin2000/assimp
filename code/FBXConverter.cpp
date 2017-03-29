@@ -245,10 +245,13 @@ private:
     aiColor3D GetColorPropertyFromMaterial( const PropertyTable& props, const std::string& baseName,
         bool& result );
 
-    // ------------------------------------------------------------------------------------------------
-    void SetShadingPropertiesCommon( aiMaterial* out_mat, const PropertyTable& props );
+	// ------------------------------------------------------------------------------------------------
+	void SetShadingPropertiesCommon(aiMaterial* out_mat, const PropertyTable& props);
 
-    // ------------------------------------------------------------------------------------------------
+	// ------------------------------------------------------------------------------------------------
+	void SetShadingPropertiesRaw(aiMaterial* out_mat, const PropertyTable& props, const TextureMap& textures, const MeshGeometry* const mesh);
+
+	// ------------------------------------------------------------------------------------------------
     // get the number of fps for a FrameRate enumerated value
     static double FrameRateToDouble( FileGlobalSettings::FrameRate fp, double customFPSVal = -1.0 );
 
@@ -1201,7 +1204,8 @@ unsigned int Converter::ConvertMeshSingleMaterial( const MeshGeometry& mesh, con
     const std::vector<aiVector3D>& vertices = mesh.GetVertices();
     const std::vector<unsigned int>& faces = mesh.GetFaceIndexCounts();
 
-    // copy vertices
+	out_mesh->mName = model.Name();
+	// copy vertices
     out_mesh->mNumVertices = static_cast<unsigned int>( vertices.size() );
     out_mesh->mVertices = new aiVector3D[ vertices.size() ];
     std::copy( vertices.begin(), vertices.end(), out_mesh->mVertices );
@@ -1375,6 +1379,10 @@ unsigned int Converter::ConvertMeshMultiMaterial( const MeshGeometry& mesh, cons
     if ( process_weights ) {
         reverseMapping.resize( count_vertices );
     }
+
+	char nameBuffer[512];
+	sprintf(nameBuffer, "%s%03d", model.Name().c_str(), index);
+	out_mesh->mName = nameBuffer;
 
     // allocate output data arrays, but don't fill them yet
     out_mesh->mNumVertices = count_vertices;
@@ -1732,7 +1740,8 @@ unsigned int Converter::ConvertMaterial( const Material& material, const MeshGeo
     }
 
     // shading stuff and colors
-    SetShadingPropertiesCommon( out_mat, props );
+    SetShadingPropertiesCommon(out_mat, props);
+	SetShadingPropertiesRaw(out_mat, props, material.Textures(), mesh);
 
     // texture assignments
     SetTextureProperties( out_mat, material.Textures(), mesh );
@@ -2078,53 +2087,240 @@ aiColor3D Converter::GetColorPropertyFromMaterial( const PropertyTable& props, c
 }
 
 
-void Converter::SetShadingPropertiesCommon( aiMaterial* out_mat, const PropertyTable& props )
+void Converter::SetShadingPropertiesCommon(aiMaterial* out_mat, const PropertyTable& props)
 {
-    // set shading properties. There are various, redundant ways in which FBX materials
-    // specify their shading settings (depending on shading models, prop
-    // template etc.). No idea which one is right in a particular context.
-    // Just try to make sense of it - there's no spec to verify this against,
-    // so why should we.
-    bool ok;
-    const aiColor3D& Diffuse = GetColorPropertyFromMaterial( props, "Diffuse", ok );
-    if ( ok ) {
-        out_mat->AddProperty( &Diffuse, 1, AI_MATKEY_COLOR_DIFFUSE );
-    }
+	// set shading properties. There are various, redundant ways in which FBX materials
+	// specify their shading settings (depending on shading models, prop
+	// template etc.). No idea which one is right in a particular context.
+	// Just try to make sense of it - there's no spec to verify this against,
+	// so why should we.
+	bool ok;
+	const aiColor3D& Diffuse = GetColorPropertyFromMaterial(props, "Diffuse", ok);
+	if (ok) {
+		out_mat->AddProperty(&Diffuse, 1, AI_MATKEY_COLOR_DIFFUSE);
+	}
 
-    const aiColor3D& Emissive = GetColorPropertyFromMaterial( props, "Emissive", ok );
-    if ( ok ) {
-        out_mat->AddProperty( &Emissive, 1, AI_MATKEY_COLOR_EMISSIVE );
-    }
+	const aiColor3D& Emissive = GetColorPropertyFromMaterial(props, "Emissive", ok);
+	if (ok) {
+		out_mat->AddProperty(&Emissive, 1, AI_MATKEY_COLOR_EMISSIVE);
+	}
 
-    const aiColor3D& Ambient = GetColorPropertyFromMaterial( props, "Ambient", ok );
-    if ( ok ) {
-        out_mat->AddProperty( &Ambient, 1, AI_MATKEY_COLOR_AMBIENT );
-    }
+	const aiColor3D& Ambient = GetColorPropertyFromMaterial(props, "Ambient", ok);
+	if (ok) {
+		out_mat->AddProperty(&Ambient, 1, AI_MATKEY_COLOR_AMBIENT);
+	}
 
-    const aiColor3D& Specular = GetColorPropertyFromMaterial( props, "Specular", ok );
-    if ( ok ) {
-        out_mat->AddProperty( &Specular, 1, AI_MATKEY_COLOR_SPECULAR );
-    }
+	const aiColor3D& Specular = GetColorPropertyFromMaterial(props, "Specular", ok);
+	if (ok) {
+		out_mat->AddProperty(&Specular, 1, AI_MATKEY_COLOR_SPECULAR);
+	}
 
-    const float Opacity = PropertyGet<float>( props, "Opacity", ok );
-    if ( ok ) {
-        out_mat->AddProperty( &Opacity, 1, AI_MATKEY_OPACITY );
-    }
+	const float Opacity = PropertyGet<float>(props, "Opacity", ok);
+	if (ok) {
+		out_mat->AddProperty(&Opacity, 1, AI_MATKEY_OPACITY);
+	}
 
-    const float Reflectivity = PropertyGet<float>( props, "Reflectivity", ok );
-    if ( ok ) {
-        out_mat->AddProperty( &Reflectivity, 1, AI_MATKEY_REFLECTIVITY );
-    }
+	const float Reflectivity = PropertyGet<float>(props, "Reflectivity", ok);
+	if (ok) {
+		out_mat->AddProperty(&Reflectivity, 1, AI_MATKEY_REFLECTIVITY);
+	}
 
-    const float Shininess = PropertyGet<float>( props, "Shininess", ok );
-    if ( ok ) {
-        out_mat->AddProperty( &Shininess, 1, AI_MATKEY_SHININESS_STRENGTH );
-    }
+	const float Shininess = PropertyGet<float>(props, "Shininess", ok);
+	if (ok) {
+		out_mat->AddProperty(&Shininess, 1, AI_MATKEY_SHININESS_STRENGTH);
+	}
 
-    const float ShininessExponent = PropertyGet<float>( props, "ShininessExponent", ok );
-    if ( ok ) {
-        out_mat->AddProperty( &ShininessExponent, 1, AI_MATKEY_SHININESS );
-    }
+	const float ShininessExponent = PropertyGet<float>(props, "ShininessExponent", ok);
+	if (ok) {
+		out_mat->AddProperty(&ShininessExponent, 1, AI_MATKEY_SHININESS);
+	}
+
+}
+
+
+void Converter::SetShadingPropertiesRaw(aiMaterial* out_mat, const PropertyTable& props, const TextureMap& textures, const MeshGeometry* const mesh)
+{
+
+
+	DirectPropertyMap unparsedProperties = props.GetUnparsedProperties();
+	int index = 0;
+	std::string prefix = "$raw.";
+	for (const DirectPropertyMap::value_type& prop : unparsedProperties) {
+		std::string rawName = prop.first;
+		std::string name = prefix + rawName;
+
+		if (const TypedProperty<aiVector3D>* interpreted = prop.second->As<TypedProperty<aiVector3D> >())
+		{
+			aiVector3D val = interpreted->Value();
+			out_mat->AddProperty(&val, 1, name.c_str(), 0, 0);
+		}
+		else if (const TypedProperty<aiColor3D>* interpreted = prop.second->As<TypedProperty<aiColor3D> >())
+		{
+			aiColor3D val = interpreted->Value();
+			out_mat->AddProperty(&val, 1, name.c_str(), 0, 0);
+		}
+		else if (const TypedProperty<aiColor4D>* interpreted = prop.second->As<TypedProperty<aiColor4D> >())
+		{
+			aiColor4D val = interpreted->Value();
+			out_mat->AddProperty(&val, 1, name.c_str(), 0, 0);
+		}
+		else if (const TypedProperty<float>* interpreted = prop.second->As<TypedProperty<float> >())
+		{
+			float val = interpreted->Value();
+			out_mat->AddProperty(&val, 1, name.c_str(), 0, 0);
+		}
+		else if (const TypedProperty<int>* interpreted = prop.second->As<TypedProperty<int> >())
+		{
+			int val = interpreted->Value();
+			out_mat->AddProperty(&val, 1, name.c_str(), 0, 0);
+		}
+		else if (const TypedProperty<bool>* interpreted = prop.second->As<TypedProperty<bool> >())
+		{
+			int val = interpreted->Value()?1:0;
+			out_mat->AddProperty(&val, 1, name.c_str(), 0, 0);
+		}
+		else if (const TypedProperty<std::string>* interpreted = prop.second->As<TypedProperty<std::string> >())
+		{
+			const aiString val = aiString(interpreted->Value());
+			out_mat->AddProperty(&val, name.c_str(), 0, 0);
+		}
+	}
+
+	for (TextureMap::const_iterator it = textures.begin(); it != textures.end(); it++) {
+		const Texture* const tex = (*it).second;
+
+		std::string rawName = it->first;
+		std::string name = prefix + rawName;
+
+
+		if (tex != 0)
+		{
+			aiString path;
+			path.Set(tex->RelativeFilename());
+
+			const Video* media = tex->Media();
+			if (media != 0 && media->ContentLength() > 0) {
+				unsigned int index;
+
+				VideoMap::const_iterator it = textures_converted.find(media);
+				if (it != textures_converted.end()) {
+					index = (*it).second;
+				}
+				else {
+					index = ConvertVideo(*media);
+					textures_converted[media] = index;
+				}
+
+				// setup texture reference string (copied from ColladaLoader::FindFilenameForEffectTexture)
+				path.data[0] = '*';
+				path.length = 1 + ASSIMP_itoa10(path.data + 1, MAXLEN - 1, index);
+			}
+
+			out_mat->AddProperty(&path, (name + "|file").c_str(), aiTextureType_UNKNOWN, 0);
+
+			aiUVTransform uvTrafo;
+			// XXX handle all kinds of UV transformations
+			uvTrafo.mScaling = tex->UVScaling();
+			uvTrafo.mTranslation = tex->UVTranslation();
+			out_mat->AddProperty(&uvTrafo, 1, (name + "|uvtrafo").c_str(), aiTextureType_UNKNOWN, 0);
+
+			const PropertyTable& props = tex->Props();
+
+			int uvIndex = 0;
+
+			bool ok;
+			const std::string& uvSet = PropertyGet<std::string>(props, "UVSet", ok);
+			if (ok) {
+				// "default" is the name which usually appears in the FbxFileTexture template
+				if (uvSet != "default" && uvSet.length()) {
+					// this is a bit awkward - we need to find a mesh that uses this
+					// material and scan its UV channels for the given UV name because
+					// assimp references UV channels by index, not by name.
+
+					// XXX: the case that UV channels may appear in different orders
+					// in meshes is unhandled. A possible solution would be to sort
+					// the UV channels alphabetically, but this would have the side
+					// effect that the primary (first) UV channel would sometimes
+					// be moved, causing trouble when users read only the first
+					// UV channel and ignore UV channel assignments altogether.
+
+					const unsigned int matIndex = static_cast<unsigned int>(std::distance(materials.begin(),
+						std::find(materials.begin(), materials.end(), out_mat)
+					));
+
+
+					uvIndex = -1;
+					if (!mesh)
+					{
+						for (const MeshMap::value_type& v : meshes_converted) {
+							const MeshGeometry* const mesh = dynamic_cast<const MeshGeometry*> (v.first);
+							if (!mesh) {
+								continue;
+							}
+
+							const MatIndexArray& mats = mesh->GetMaterialIndices();
+							if (std::find(mats.begin(), mats.end(), matIndex) == mats.end()) {
+								continue;
+							}
+
+							int index = -1;
+							for (unsigned int i = 0; i < AI_MAX_NUMBER_OF_TEXTURECOORDS; ++i) {
+								if (mesh->GetTextureCoords(i).empty()) {
+									break;
+								}
+								const std::string& name = mesh->GetTextureCoordChannelName(i);
+								if (name == uvSet) {
+									index = static_cast<int>(i);
+									break;
+								}
+							}
+							if (index == -1) {
+								FBXImporter::LogWarn("did not find UV channel named " + uvSet + " in a mesh using this material");
+								continue;
+							}
+
+							if (uvIndex == -1) {
+								uvIndex = index;
+							}
+							else {
+								FBXImporter::LogWarn("the UV channel named " + uvSet +
+									" appears at different positions in meshes, results will be wrong");
+							}
+						}
+					}
+					else
+					{
+						int index = -1;
+						for (unsigned int i = 0; i < AI_MAX_NUMBER_OF_TEXTURECOORDS; ++i) {
+							if (mesh->GetTextureCoords(i).empty()) {
+								break;
+							}
+							const std::string& name = mesh->GetTextureCoordChannelName(i);
+							if (name == uvSet) {
+								index = static_cast<int>(i);
+								break;
+							}
+						}
+						if (index == -1) {
+							FBXImporter::LogWarn("did not find UV channel named " + uvSet + " in a mesh using this material");
+						}
+
+						if (uvIndex == -1) {
+							uvIndex = index;
+						}
+					}
+
+					if (uvIndex == -1) {
+						FBXImporter::LogWarn("failed to resolve UV channel " + uvSet + ", using first UV channel");
+						uvIndex = 0;
+					}
+				}
+			}
+
+			out_mat->AddProperty(&uvIndex, 1, (name + "|uvwsrc").c_str(), aiTextureType_UNKNOWN, 0);
+		}
+	}
+
 }
 
 

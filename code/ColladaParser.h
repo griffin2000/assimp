@@ -50,6 +50,8 @@
 #include "../include/assimp/ai_assert.h"
 #include "TinyFormatter.h"
 #include <memory>
+#include "StringUtils.h"
+
 
 namespace Assimp
 {
